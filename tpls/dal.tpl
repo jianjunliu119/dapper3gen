@@ -1,0 +1,99 @@
+using Dapper;
+using $base_namespace.Common;
+using $base_namespace.Factory;
+using $base_namespace.Model.$dir;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+
+namespace $base_namespace.DAL.$dir
+{
+    /// <summary>
+    /// 数据库表名: $table_name
+    /// 描述: $table_comment 数据访问层 
+    /// </summary>
+    public class #model_nameDAL
+    {
+        private IDbConnection _conn;
+
+        public IDbConnection Conn
+        {
+            get
+            {
+                return _conn = ConnectionFactory.CreateConnection();
+            }
+        }
+        #region CURD
+
+        public int Insert($model_name $model_name_low)
+        {
+            using (Conn)
+            {
+                return Conn.Execute(@"$insert_sql", $model_name_low);
+            }
+        }
+        public int Update($model_name $model_name_low)
+        {
+            using (Conn)
+            {
+                return Conn.Execute(@"$update_sql", menu);
+            }
+        }
+
+        public int Delete($model_name $model_name_low)
+        {
+            using (Conn)
+            {
+                return Conn.Execute(@"delete from $table_name where id = @id", $model_name_low);
+            }
+        }
+
+        public int Delete(string id)
+        {
+            using (Conn)
+            {
+                return Conn.Execute(@"delete from $table_name where id = @id", new { Id = id });
+            }
+        }
+        public #model_name GetOne(string id)
+        {
+            using (Conn)
+            {
+                string sql = "select * from $table_name where id = @id";
+                return Conn.Query<$model_name>(sql, new { Id = id }).SingleOrDefault();
+            }
+        }
+        public IList<$model_name> GetAll()
+        {
+            using (Conn)
+            {
+                string sql = "select * from $table_name";
+                return Conn.Query<$model_name>(sql).ToList();
+            }
+        }
+        /// <summary>
+        /// 分页
+        /// </summary>
+        /// <param name="pageIndex"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
+        public PageData<$model_name> GetAll(int pageIndex, int pageSize)
+        {
+            PageData<$model_name> pd = new PageData<$model_name>()
+            {
+                PageIndex = pageIndex,
+                PageSize = pageSize
+            };
+            using (Conn)
+            {
+                string sql = "select * from $table_name";
+                pd.TotalCount = Conn.Query<$model_name>(sql).Count();
+
+                string pageSql = sql + " limit " + (pageIndex - 1) * pageSize + "," + pageIndex * pageSize;
+                pd.Data = Conn.Query<$model_name>(pageSql).ToList();
+            }
+            return pd;
+        }
+        #endregion
+    }
+}
