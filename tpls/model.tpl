@@ -1,6 +1,6 @@
 using System;
 
-namespace $base_namespace.Model.$dir
+namespace $solution_name.$project_name.Model.$dir
 {
     /// <summary>
     /// 数据库表名: $table_name

@@ -1,18 +1,18 @@
 using Dapper;
-using $base_namespace.Common;
-using $base_namespace.Factory;
-using $base_namespace.Model.$dir;
+using $solution_name.Common;
+using $solution_name.$project_name.Factory;
+using $solution_name.$project_name.Model.$dir;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 
-namespace $base_namespace.DAL.$dir
+namespace $solution_name.$project_name.DAL.$dir
 {
     /// <summary>
     /// 数据库表名: $table_name
     /// 描述: $table_comment 数据访问层 
     /// </summary>
-    public class #model_nameDAL
+    public class $model_nameDAL
     {
         private IDbConnection _conn;
 
@@ -20,6 +20,7 @@ namespace $base_namespace.DAL.$dir
         {
             get
             {
+                Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
                 return _conn = ConnectionFactory.CreateConnection();
             }
         }
@@ -55,7 +56,7 @@ namespace $base_namespace.DAL.$dir
                 return Conn.Execute(@"delete from $table_name where id = @id", new { Id = id });
             }
         }
-        public #model_name GetOne(string id)
+        public $model_name GetOne(string id)
         {
             using (Conn)
             {

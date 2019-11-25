@@ -55,6 +55,17 @@ def str2hump(text):
         res = res + i[0].upper() + i[1:]
         j += 1
     return res
+def strbegin2low(text):
+    res=''
+    for i,v in enumerate(text):
+        if i == 0:
+            res += v.lower()
+        else:
+            res +=v
+    return res
+        
+        
+
 
 def gen_model():
     fileds = get_table_fileds().values
@@ -70,7 +81,8 @@ def gen_model():
     
     with open('tpls/model.tpl','r',encoding='utf-8') as f:
         tpl = f.read()
-        tpl = tpl.replace('$base_namespace',config._base_namespace)
+        tpl = tpl.replace('$solution_name',config._solution_name)
+        tpl = tpl.replace('$project_name',config._project_name)
         tpl = tpl.replace('$table_name',config._table_name)
         tpl = tpl.replace('$table_comment',table_comment)
         tpl = tpl.replace('$model_name',config._model_name)
@@ -94,12 +106,12 @@ def gen_dal():
         update_ext += spaces
         keys += '`%s`,\n' % (filed[0])
 
-        if filed[2] == 'int':
-            values += '@%s,\n' % filed[0]
-            update_ext += '`%s` = @%s,\n' % (filed[0],filed[0])
-        else:
-            values += ''''@%s',\n''' % filed[0]
-            update_ext += '''`%s` = '@%s',\n''' % (filed[0],filed[0])
+        # if filed[2] == 'int':
+        values += '@%s,\n' % str2hump(filed[0])
+        update_ext += '`%s` = @%s,\n' % (filed[0], str2hump(filed[0]))
+        # else:
+            # values += ''''@%s',\n''' % str2hump(filed[0])
+            # update_ext += '''`%s` = '@%s',\n''' % (filed[0],str2hump(filed[0]))
     keys = keys[:-2]
     values = values[:-2]
     update_ext = update_ext[:-2]
@@ -110,9 +122,11 @@ def gen_dal():
 
     with open('tpls/dal.tpl','r',encoding='utf-8') as f:
         tpl = f.read()
-        tpl = tpl.replace('$base_namespace',config._base_namespace)
+        tpl = tpl.replace('$solution_name',config._solution_name)
+        tpl = tpl.replace('$project_name',config._project_name)
         tpl = tpl.replace('$table_name',config._table_name)
         tpl = tpl.replace('$table_comment',table_comment)
+        tpl = tpl.replace('$model_name_low',strbegin2low(config._model_name))
         tpl = tpl.replace('$model_name',config._model_name)
         tpl = tpl.replace('$dir',config._dir)
         tpl = tpl.replace('$insert_sql',insert_sql)
@@ -124,7 +138,8 @@ def gen_dal():
 def gen_bll():
     with open('tpls/bll.tpl','r',encoding='utf-8') as f:
         tpl = f.read()
-        tpl = tpl.replace('$base_namespace',config._base_namespace)
+        tpl = tpl.replace('$solution_name',config._solution_name)
+        tpl = tpl.replace('$project_name',config._project_name)
         tpl = tpl.replace('$model_name',config._model_name)
         tpl = tpl.replace('$dir',config._dir)
         f.close()
@@ -135,7 +150,8 @@ def gen_bll():
 def gen_factory():
     with open('tpls/factory.tpl','r',encoding='utf-8') as f:
         tpl = f.read()
-        tpl = tpl.replace('$base_namespace',config._base_namespace)
+        tpl = tpl.replace('$solution_name',config._solution_name)
+        tpl = tpl.replace('$project_name',config._project_name)
         tpl = tpl.replace('$host',config._host)
         tpl = tpl.replace('$user',config._user)
         tpl = tpl.replace('$password',config._password)
@@ -144,6 +160,19 @@ def gen_factory():
         with open('gen/ConnectionFactory.cs','w+',encoding='utf-8') as f:
             f.write(tpl)
             f.close()
+def gen_pagedata():
+    with open('tpls/pagedata.tpl','r',encoding='utf-8') as f:
+        tpl = f.read()
+        tpl = tpl.replace('$solution_name',config._solution_name)
+        tpl = tpl.replace('$project_name',config._project_name)
+        f.close()
+        with open('gen/PageData.cs','w+',encoding='utf-8') as f:
+            f.write(tpl)
+            f.close()
+
+
+
+
 
 
 
@@ -168,6 +197,8 @@ if __name__ == "__main__":
     print('bll层生成完毕')
     gen_factory()
     print('factory生成完毕')
+    gen_pagedata()
+    print('分页对象生成完毕')
     print('success auther by luanshaofeng')
 
     pass

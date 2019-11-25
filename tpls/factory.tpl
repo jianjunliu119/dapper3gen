@@ -2,7 +2,7 @@ using MySql.Data.MySqlClient;
 using System.Configuration;
 using System.Data;
 
-namespace $base_namespace.Factory
+namespace $solution_name.$project_name.Factory
 {
     /// <summary>
     /// Connection工厂用于实例化对应的IDbConnection对象，传递给Dapper。
