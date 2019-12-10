@@ -28,6 +28,7 @@ class Config:
         self._dir = self.GetStr(self.__classname,'dir')
         self._isautonumid = self.GetBool(self.__classname,'isautonumid')
         self._comment = self.GetBool(self.__classname,'comment')
+        self._xlsxpath = self.GetStr('pub','xlsxpath')
         self._sheet = self.GetStr(self.__classname,'sheet')
         return 
     def GetStr(self, section, option):

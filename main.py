@@ -194,9 +194,9 @@ def gendb(classname='',xlsxpath=''):
     db = DB(config._host,config._port,config._db,config._user,config._password)
     
     # 机构类型 1:起升机构 2:小车机构 3
-    path = 'E:\项目\起重机管理系统20191114\HDCraneCIMS2\document\数据库设计.xlsx'
     
-    df = pd.read_excel(path,sheet_name=config._sheet,keep_default_na=False)
+    df = pd.read_excel(config._xlsxpath,sheet_name=config._sheet,keep_default_na=False)
+
     # print(df[2:].values)
 
     print('%s表结构生成开始 时间:%s' % (config._table_name,datetime.datetime.now()))
