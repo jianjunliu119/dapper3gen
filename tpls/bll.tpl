@@ -1,4 +1,4 @@
-using $solution_name.$project_name.DAl.$dir;
+using $solution_name.$project_name.DAL.$dir;
 
 
 namespace $solution_name.$project_name.BLL.$dir

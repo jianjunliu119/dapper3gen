@@ -37,7 +37,7 @@ namespace $solution_name.$project_name.DAL.$dir
         {
             using (Conn)
             {
-                return Conn.Execute(@"$update_sql", menu);
+                return Conn.Execute(@"$update_sql", $model_name_low);
             }
         }
 

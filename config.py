@@ -2,11 +2,17 @@
 import configparser,codecs,re
 class Config:
     __configdir = False
-    def __init__(self, configdir=''):
+    __classname = ''
+    def __init__(self, configdir='',classname=''):
         if not configdir.strip():
             self.__configdir = 'config.ini'
         else:
             self.__configdir = configdir
+
+        if not classname.strip():
+            self.__classname == 'pub'
+        else:
+            self.__classname = classname
         self.RemoveBOM()
         # self.auto = 1
         self._host = self.GetStr('pub','host')
@@ -16,9 +22,13 @@ class Config:
         self._port = self.GetInt('pub','port')
         self._solution_name = self.GetStr('pub','solution_name')
         self._project_name = self.GetStr('pub','project_name')
-        self._model_name = self.GetStr('pub','model_name')
-        self._table_name = self.GetStr('pub','table_name')
-        self._dir = self.GetStr('pub','dir')
+
+        self._model_name = self.GetStr(self.__classname,'model_name')
+        self._table_name = self.GetStr(self.__classname,'table_name')
+        self._dir = self.GetStr(self.__classname,'dir')
+        self._isautonumid = self.GetBool(self.__classname,'isautonumid')
+        self._comment = self.GetBool(self.__classname,'comment')
+        self._sheet = self.GetStr(self.__classname,'sheet')
         return 
     def GetStr(self, section, option):
         cf = configparser.ConfigParser()
@@ -26,7 +36,9 @@ class Config:
             cf.read(self.__configdir,encoding='utf-8')
             Ret = cf.get(section, option)
             return Ret
-        except Exception:
+        except Exception as e:
+            print(self.__classname)
+            print('%s,%s,%s' % (section,option,e))
             return ""
 
 
