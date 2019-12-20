@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from db import DB
 from config import Config
-import os, datetime
+import os, datetime,shutil
 import numpy as np
 import pandas as pd
 import configparser
@@ -33,16 +33,52 @@ def gencs(classname=''):
     """生成三层"""
     config = Config(classname=classname)
     print('%s开始生成三层 时间:%s' % (config._model_name, datetime.datetime.now()))
-    module_dir_dal = 'gen/dal/%s' % config._dir
-    module_dir_model = 'gen/model/%s' % config._dir
-    module_dir_bll = 'gen/bll/%s' % config._dir
+    module_dir_dal = 'gen\\dal\\%s' % config._dir
+    module_dir_model = 'gen\\model\\%s' % config._dir
+    module_dir_grid = 'gen\\datagrid\\%s' % config._dir
+    module_dir_bll = 'gen\\bll\\%s' % config._dir
+    # try:
+    #     shutil.rmtree(os.getcwd() +'\\'+module_dir_grid)
+    # except Exception as e:
+    #     pass
+    # try:
+    #     shutil.rmtree(os.getcwd() +'\\'+module_dir_bll)
+    # except Exception as e:
+    #     pass
+    # try:
+
+    #     shutil.rmtree(os.getcwd() +'\\'+module_dir_dal)
+
+    # except Exception as e:
+    #     pass
+    # try:
+    #     shutil.rmtree(os.getcwd() +'\\'+module_dir_model)
+    # except Exception as e:
+    #     pass
+    try:
+        os.makedirs(module_dir_grid)
+    except Exception as e:
+        pass
     try:
         os.makedirs(module_dir_bll)
-        os.makedirs(module_dir_dal)
-        os.makedirs(module_dir_model)
-    except Exception:
+    except Exception as e:
         pass
-        # print(e)
+    try:
+
+        os.makedirs(module_dir_dal)
+
+    except Exception as e:
+        pass
+    try:
+
+        os.makedirs(module_dir_model)
+
+    except Exception as e:
+        pass
+
+    except Exception as e:
+        print(e)
+        pass
     db = DB(config._host, config._port, config._db, config._user,
             config._password)
 
@@ -73,14 +109,20 @@ WHERE
         if filed[2].count('char'):
             data.values[index][2] = 'string'
 
-        if filed[2].count('int'):
-            data.values[index][2] = 'int'
+        # if filed[2].count('int'):
+            # data.values[index][2] = 'int'
+        if filed[2] == 'tinyint':
+            data.values[index][2] = 'bool'
 
         if filed[2].count('time'):
             data.values[index][2] = 'DateTime'
+        print(filed[2])
     fileds = data.values
     model_params = ''
-    for filed in fileds:
+    grid_colls = ''
+    mec_type = 0
+
+    for index,filed in enumerate(fileds):
         model_params += '\n'
         if filed[1] != '':
             model_params += '''        /// <summary>
@@ -89,6 +131,51 @@ WHERE
 
         model_params += '        public %s %s { get; set; }\n' % (
             filed[2], str2hump(filed[0]))
+
+
+        has_add = 0
+        if config._table_name == 'datapoint':
+            if 'V' in filed[0]:
+                ssql = 'select * from var_dict where var_code = "' + filed[0] +'"'
+                data2 = db.execQuery(ssql)
+                mec_type = int(data2['mec_type'][0])
+                fileds[index][2] = mec_type
+        grid_colls +='''\n        <DataGridTextColumn Header="'''+ filed[1] +'''" Binding="{Binding '''+ str2hump(filed[0])+'''}"></DataGridTextColumn>'''
+
+
+
+    if config._table_name == 'datapoint':
+        arr = []
+        for i in range(1,7):
+            arr1 = []
+            for j in fileds:
+                if j[2] ==i:
+                    arr1.append(j)
+            arr.append(arr1)
+            print( arr) 
+
+        for i,v in enumerate(arr):
+            file_names = ['MainHoist.xml','ViceHoist.xml','BigCar.xml','MainCar.xml','ViceCar.xml','PowerDistribution.xml']
+
+            data_grid = '''<DataGrid x:Name=\"dataGrid\" Height=\"600\" ItemsSource=\"{Binding}\" CanUserAddRows=\"False\" AutoGenerateColumns=\"False\"> 
+    <DataGrid.Columns>
+        <DataGridTextColumn Header="" Binding="{Binding Id}"></DataGridTextColumn> '''
+            for j in v:
+                data_grid +='''\n        <DataGridTextColumn Header="'''+ j[1] +'''" Binding="{Binding '''+ str2hump(j[0])+'''}"></DataGridTextColumn>'''
+            data_grid +='''
+     </DataGrid.Columns> 
+</DataGrid>'''
+            with open('gen/datagrid/%s/%s.xml' % (config._dir, file_names[i]),
+                          'w+',
+                          encoding='utf-8') as f:
+                f.write(data_grid)
+                f.close()
+        model_params += '''        public bool ConnectionState { get; set; }
+        public string SystempDataTime { get; set; }
+        public int ConnectionDelay { get; set; }'''
+
+
+
 
     with open('tpls/model.tpl', 'r', encoding='utf-8') as f:
         tpl = f.read()
@@ -104,6 +191,18 @@ WHERE
                   'w+',
                   encoding='utf-8') as f:
             f.write(tpl)
+            f.close()
+
+    data_grid = '''<DataGrid x:Name=\"dataGrid\" Height=\"600\" ItemsSource=\"{Binding}\" CanUserAddRows=\"False\" AutoGenerateColumns=\"False\"> 
+    <DataGrid.Columns>'''
+    data_grid += grid_colls
+    data_grid +='''
+     </DataGrid.Columns> 
+</DataGrid>'''
+    with open('gen/datagrid/%s/%s.xml' % (config._dir, config._model_name),
+                  'w+',
+                  encoding='utf-8') as f:
+            f.write(data_grid)
             f.close()
     '''生成dal'''
     # fileds = get_table_fileds().values
@@ -156,6 +255,9 @@ WHERE
             f.write(tpl)
             f.close()
             '''生成bll'''
+
+   
+
     with open('tpls/bll.tpl', 'r', encoding='utf-8') as f:
         tpl = f.read()
         tpl = tpl.replace('$solution_name', config._solution_name)
@@ -197,6 +299,8 @@ WHERE
 def gendb(classname='', xlsxpath=''):
 
     config = Config(classname=classname)
+    if config._sheet == '':
+        return
     db = DB(config._host, config._port, config._db, config._user,
             config._password)
 
@@ -208,14 +312,19 @@ def gendb(classname='', xlsxpath=''):
 
     # print(df[2:].values)
 
-    print('%s表结构生成开始 时间:%s' % (config._table_name, datetime.datetime.now()))
+    print('创建表：[%s] 时间 %s' % (config._table_name, datetime.datetime.now()))
     tablename = config._table_name
 
     sqlstr = 'CREATE TABLE `' + tablename + '`  ('
 
     fstr = ''
+    fields =''
+    field_types = []
 
     for index, row in df[3:].iterrows():
+        if row[1] != 'id':
+            fields += '`'+row[1] + '`,'
+            field_types.append(row[2])
         co = ''
         de = ''
         at = ''
@@ -229,12 +338,79 @@ def gendb(classname='', xlsxpath=''):
             at = 'NOT NULL ' + row[5]
 
         fstr += '`' + row[1] + '` ' + row[
-            2] + ' ' + de + ' ' + at + ' COMMENT "' + row[0] + co + '",'
+            2] + ' ' + de + ' ' + at + ' COMMENT "' + row[0] +' '+ co + '",'
     sqlstr += fstr + '  PRIMARY KEY (`id`)) COMMENT = "' + classname + '"'
     delstr = 'drop table if exists `' + tablename + '`;'
-    # print(sqlstr)
-    db.exec(delstr)
-    db.exec(sqlstr)
+
+    try:
+        db.exec(delstr)
+    except Exception as e:
+        print('删除表错误： %s \n %s' (e,delstr))
+    try:
+        db.exec(sqlstr)
+    except Exception as e:
+        print('创建表错误: %s \n %s' (e,sqlstr))
+    fields = fields[:-1]
+    if config._sheet == '变量名字典表':
+        df1 = pd.read_excel(config._xlsxpath,
+            sheet_name=config._data_sheet,
+            keep_default_na=False)
+        i = 0
+
+        fields2 = []
+        field2_types = []
+        field2_comments = []
+        field2_mec_types = []
+
+        for index, row in df1.iterrows():
+            values = ''
+            for index1,col in enumerate(row):
+                if index1 == 0:
+                    fields2.append(col)
+
+                if index1 == 1:
+                    field2_comments.append(col)
+
+                if index1 == 3:
+                    if col == 1:
+                        field2_types.append('tinyint(1)')
+                    else:
+                        field2_types.append('varchar(50)')
+                field_type = field_types[index1+1]
+                if 'varchar' in field_type:
+                    col = '"'+str(col)+'"'
+
+                if str(col) == '' or str(col) == "":
+                    col = 'NULL'
+                values += str(col) +','
+            values = values[:-1]
+            print('#' * 10)
+            insert_sql = 'INSERT INTO `crane_ipc`.`'+ tablename +'` (' + fields +') VALUES(now(),'+ values +')'
+            print(insert_sql)
+            db.exec(insert_sql)
+
+        '''开始创建数据点数据表'''
+
+        delstr = 'drop table if exists `' + config._datapoint_table_name + '`;'
+
+        create_sql2 = 'CREATE TABLE `' + config._datapoint_table_name + '`  (`id` int(11) NOT NULL AUTO_INCREMENT,'
+
+        for i,f in enumerate(fields2):
+            create_sql2 += '`'+ f +'` '+ field2_types[i] + ' COMMENT "' + field2_comments[i] +'",\n'
+
+        create_sql2 +=  '  PRIMARY KEY (`id`)) COMMENT = "数据点总汇表"'
+        create_sql2 = create_sql2
+        print(create_sql2)
+
+        db.exec(delstr)
+        db.exec(create_sql2)
+
+        
+
+
+        
+
+        pass
 
     print('%s表结构生成结束 时间:%s' % (config._table_name, datetime.datetime.now()))
 

@@ -68,7 +68,7 @@ namespace $solution_name.$project_name.DAL.$dir
         {
             using (Conn)
             {
-                string sql = "select * from $table_name";
+                string sql = "select * from $table_name order by create_time desc";
                 return Conn.Query<$model_name>(sql).ToList();
             }
         }
@@ -87,7 +87,7 @@ namespace $solution_name.$project_name.DAL.$dir
             };
             using (Conn)
             {
-                string sql = "select * from $table_name";
+                string sql = "select * from $table_name order by create_time desc";
                 pd.TotalCount = Conn.Query<$model_name>(sql).Count();
 
                 string pageSql = sql + " limit " + (pageIndex - 1) * pageSize + "," + pageIndex * pageSize;

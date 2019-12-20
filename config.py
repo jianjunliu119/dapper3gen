@@ -33,6 +33,9 @@ class Config:
         self._comment = self.GetBool(self.__classname, 'comment')
         self._xlsxpath = self.GetStr('pub', 'xlsxpath')
         self._sheet = self.GetStr(self.__classname, 'sheet')
+        self._data_sheet = self.GetStr(self.__classname, 'data_sheet')
+        self._datapoint_table_name = self.GetStr('pub', 'datapoint_table_name')
+
         return
 
     def GetStr(self, section, option):
