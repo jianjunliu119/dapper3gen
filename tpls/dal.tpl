@@ -87,10 +87,12 @@ namespace $solution_name.$project_name.DAL.$dir
             };
             using (Conn)
             {
-                string sql = "select * from $table_name order by create_time desc";
+                string sql = "select * from $table_name where 1=1 ";
+                // 查询条件
+                sql +=" order by create_time desc";
                 pd.TotalCount = Conn.Query<$model_name>(sql).Count();
-
-                string pageSql = sql + " limit " + (pageIndex - 1) * pageSize + "," + pageIndex * pageSize;
+                //pd.TotalPage = (pd.TotalCount + pageSize - 1) / pageSize;
+                string pageSql = sql + " limit " + (pageIndex - 1) * pageSize + "," + pageSize;
                 pd.Data = Conn.Query<$model_name>(pageSql).ToList();
             }
             return pd;

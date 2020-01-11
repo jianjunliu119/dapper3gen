@@ -98,6 +98,7 @@ WHERE
     SELECT
 	COLUMN_NAME,
 	column_comment ,
+    data_type,
     data_type
 FROM
 	INFORMATION_SCHEMA.COLUMNS 
@@ -116,9 +117,13 @@ WHERE
 
         if filed[2].count('time'):
             data.values[index][2] = 'DateTime'
-        print(filed[2])
+
+        if filed[2] == 'float':
+            data.values[index][2] = 'float'
+        
     fileds = data.values
     model_params = ''
+    mapper_params=''
     grid_colls = ''
     mec_type = 0
 
@@ -131,6 +136,11 @@ WHERE
 
         model_params += '        public %s %s { get; set; }\n' % (
             filed[2], str2hump(filed[0]))
+        if '_' in filed[0]:
+
+            mapper_params += '\n'
+
+            mapper_params += '            Map(f => f.%s).Column("%s");' % (str2hump(filed[0]),filed[0])
 
 
         has_add = 0
@@ -140,7 +150,21 @@ WHERE
                 data2 = db.execQuery(ssql)
                 mec_type = int(data2['mec_type'][0])
                 fileds[index][2] = mec_type
-        grid_colls +='''\n        <DataGridTextColumn Header="'''+ filed[1] +'''" Binding="{Binding '''+ str2hump(filed[0])+'''}"></DataGridTextColumn>'''
+                # fileds[index].append(int(data2['date_type'][0]))
+                print(fileds[index])
+        binding_str = str2hump(filed[0])
+        header_str = filed[1]
+        col_datetype = filed[2]
+        if filed[0] == 'id':
+            header_str = '编号'
+        
+        if col_datetype == 'bool':
+            binding_str += ',Converter={StaticResource cvtSwitch}'
+        if binding_str == 'CreateTime':
+            binding_str +=',Converter={StaticResource cvtDateTime}' 
+
+        grid_colls +='''\n        <DataGridTextColumn Header="'''+ header_str +'''" Binding="{Binding '''+ binding_str +'''}"></DataGridTextColumn>'''
+
 
 
 
@@ -159,9 +183,15 @@ WHERE
 
             data_grid = '''<DataGrid x:Name=\"dataGrid\" Height=\"600\" ItemsSource=\"{Binding}\" CanUserAddRows=\"False\" AutoGenerateColumns=\"False\"> 
     <DataGrid.Columns>
-        <DataGridTextColumn Header="" Binding="{Binding Id}"></DataGridTextColumn> '''
+        <DataGridTextColumn Header="编号" Binding="{Binding Id}"></DataGridTextColumn> '''
             for j in v:
-                data_grid +='''\n        <DataGridTextColumn Header="'''+ j[1] +'''" Binding="{Binding '''+ str2hump(j[0])+'''}"></DataGridTextColumn>'''
+
+                converter_str =''
+                print(j[3])
+                if j[3] == 'tinyint':
+                    converter_str = ',Converter={StaticResource cvtSwitch}'
+                data_grid +='''\n        <DataGridTextColumn Header="'''+ j[1] +'''" Binding="{Binding '''+ str2hump(j[0])+converter_str+'''}"></DataGridTextColumn>'''
+            data_grid +='''\n        <DataGridTextColumn Header="创建时间" Binding="{Binding CreateTime,Converter={StaticResource cvtDateTime}}"></DataGridTextColumn>'''
             data_grid +='''
      </DataGrid.Columns> 
 </DataGrid>'''
@@ -186,6 +216,7 @@ WHERE
         tpl = tpl.replace('$model_name', config._model_name)
         tpl = tpl.replace('$dir', config._dir)
         tpl = tpl.replace('$model_params', model_params)
+        tpl = tpl.replace('$mapper_params', mapper_params)
         f.close()
         with open('gen/model/%s/%s.cs' % (config._dir, config._model_name),
                   'w+',
@@ -193,12 +224,31 @@ WHERE
             f.write(tpl)
             f.close()
 
-    data_grid = '''<DataGrid x:Name=\"dataGrid\" Height=\"600\" ItemsSource=\"{Binding}\" CanUserAddRows=\"False\" AutoGenerateColumns=\"False\"> 
+    data_grid = '''
+<DataGrid 
+           Width="1680" 
+           Height="580"
+           HeadersVisibility="Column"
+           ItemsSource="{Binding}" 
+           CanUserAddRows="False" 
+           AutoGenerateColumns="False" 
+           Style="{DynamicResource DataGridStyle1}" 
+           ColumnHeaderStyle="{DynamicResource DataGridColumnHeaderStyle2}" 
+           RowStyle="{DynamicResource DataGridRowStyle1}" 
+           CellStyle="{DynamicResource DataGridCellStyle1}" >
     <DataGrid.Columns>'''
     data_grid += grid_colls
     data_grid +='''
      </DataGrid.Columns> 
 </DataGrid>'''
+
+    data_grid +='''
+    <Page.Resources>
+        <cvt:SwitchConverter x:Key="SwitchConverter"/>
+          <cvt:DateTimeConverter x:Key="dateTimeConverter"/>
+    </Page.Resources>
+      xmlns:cvt="clr-namespace:HDCraneCIMS.IPC.Desk.Converter"
+    '''
     with open('gen/datagrid/%s/%s.xml' % (config._dir, config._model_name),
                   'w+',
                   encoding='utf-8') as f:
@@ -347,6 +397,7 @@ def gendb(classname='', xlsxpath=''):
     except Exception as e:
         print('删除表错误： %s \n %s' (e,delstr))
     try:
+
         db.exec(sqlstr)
     except Exception as e:
         print('创建表错误: %s \n %s' (e,sqlstr))
@@ -370,6 +421,9 @@ def gendb(classname='', xlsxpath=''):
 
                 if index1 == 1:
                     field2_comments.append(col)
+                if index1 == 2:
+                    field2_mec_types.append(col)
+
 
                 if index1 == 3:
                     if col == 1:
@@ -386,21 +440,39 @@ def gendb(classname='', xlsxpath=''):
             values = values[:-1]
             print('#' * 10)
             insert_sql = 'INSERT INTO `crane_ipc`.`'+ tablename +'` (' + fields +') VALUES(now(),'+ values +')'
-            print(insert_sql)
             db.exec(insert_sql)
 
         '''开始创建数据点数据表'''
+        create_sql2_arr = []
+        table_comments = ['主起升','副起升','大车','主小车','副小车','配电']
+
+        for j in range(1,7):
+            dp_table_name = config._datapoint_table_name+'_'+ str(j)
+            delstr = 'drop table if exists `' + dp_table_name + '`;'
+            create_sql2 = 'CREATE TABLE `' + dp_table_name + '`  (`id` int(11) NOT NULL AUTO_INCREMENT,`create_time` datetime(0) DEFAULT now() COMMENT "创建时间",'
+
+            for i,f in enumerate(fields2):
+                if field2_mec_types[i] == j:
+                    create_sql2 += '`'+ f +'` '+ field2_types[i] + ' COMMENT "' + field2_comments[i] +'",\n'
+            create_sql2 +=  '  PRIMARY KEY (`id`)) COMMENT = "'+ table_comments[j-1]+'"'
+            print('#' * 20)
+            print(create_sql2)
+
+            db.exec(delstr)
+            db.exec(create_sql2)
+                
+
+            
 
         delstr = 'drop table if exists `' + config._datapoint_table_name + '`;'
 
-        create_sql2 = 'CREATE TABLE `' + config._datapoint_table_name + '`  (`id` int(11) NOT NULL AUTO_INCREMENT,'
+        create_sql2 = 'CREATE TABLE `' + config._datapoint_table_name + '`  (`id` int(11) NOT NULL AUTO_INCREMENT,`create_time` datetime(0) DEFAULT now() COMMENT "创建时间",'
 
         for i,f in enumerate(fields2):
             create_sql2 += '`'+ f +'` '+ field2_types[i] + ' COMMENT "' + field2_comments[i] +'",\n'
 
         create_sql2 +=  '  PRIMARY KEY (`id`)) COMMENT = "数据点总汇表"'
         create_sql2 = create_sql2
-        print(create_sql2)
 
         db.exec(delstr)
         db.exec(create_sql2)
@@ -416,8 +488,9 @@ def gendb(classname='', xlsxpath=''):
 
 
 if __name__ == "__main__":
+    print('start')
 
-    xlsxpath = 'E:\项目\起重机管理系统20191114\HDCraneCIMS2\document\数据库设计.xlsx'
+    xlsxpath = 'E:\projects\HDCraneCIMS20191114\HDCraneCIMS2\document\数据库设计.xlsx'
 
     cf = configparser.ConfigParser()
     cf.read('config.ini', encoding='utf-8')
@@ -426,6 +499,6 @@ if __name__ == "__main__":
         i += 1
         if sl != 'pub':
             print("#" * 20)
-            gendb(classname=sl, xlsxpath=xlsxpath)
+            #gendb(classname=sl, xlsxpath=xlsxpath)
             gencs(sl)
             print("#" * 20)
